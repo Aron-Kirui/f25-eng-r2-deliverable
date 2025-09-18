@@ -10,13 +10,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import type { Database } from "@/lib/schema";
 import Image from "next/image";
-
-type Species = Database["public"]["Tables"]["species"]["Row"];
+import type { SpeciesWithAuthor } from "./types";
 
 interface SpeciesDetailsDialogProps {
-  species: Species;
+  species: SpeciesWithAuthor;
   children: React.ReactNode; // This will be the "Learn More" button
 }
 
@@ -24,57 +22,78 @@ export default function SpeciesDetailsDialog({ species, children }: SpeciesDetai
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-h-screen overflow-y-auto sm:max-w-[600px]">
+      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{species.scientific_name}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {species.scientific_name}
+            {species.endangered && (
+              <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-700">Endangered</span>
+            )}
+          </DialogTitle>
           <DialogDescription>Detailed information about this species</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {species.image && (
-            <div className="relative h-60 w-full overflow-hidden rounded-lg">
-              <Image src={species.image} alt={species.scientific_name} fill style={{ objectFit: "cover" }} />
+            <div className="relative h-48 w-full overflow-hidden rounded-lg">
+              <Image
+                src={species.image}
+                alt={species.common_name ?? species.scientific_name}
+                fill
+                className="object-cover"
+              />
             </div>
           )}
 
-          <div className="space-y-3">
-            <div>
-              <h4 className="text-sm font-semibold text-gray-600">Scientific Name</h4>
-              <p className="text-lg">{species.scientific_name}</p>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Scientific Name</h4>
+                <p className="mt-1 text-gray-900">{species.scientific_name}</p>
+              </div>
+
+              {species.common_name && (
+                <div>
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Common Name</h4>
+                  <p className="mt-1 text-gray-900">{species.common_name}</p>
+                </div>
+              )}
             </div>
 
-            {species.common_name && (
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="text-sm font-semibold text-gray-600">Common Name</h4>
-                <p className="text-lg italic">{species.common_name}</p>
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Kingdom</h4>
+                <p className="mt-1 text-gray-900">{species.kingdom}</p>
               </div>
-            )}
 
-            <div>
-              <h4 className="text-sm font-semibold text-gray-600">Kingdom</h4>
-              <p>{species.kingdom}</p>
+              {species.profiles && (
+                <div>
+                  <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Added By</h4>
+                  <p className="mt-1 text-gray-900">{species.profiles.display_name || species.profiles.email}</p>
+                </div>
+              )}
             </div>
 
             {species.total_population && (
               <div>
-                <h4 className="text-sm font-semibold text-gray-600">Total Population</h4>
-                <p>{species.total_population.toLocaleString()}</p>
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Total Population</h4>
+                <p className="mt-1 text-gray-900">{species.total_population.toLocaleString()}</p>
               </div>
             )}
 
             {species.description && (
               <div>
-                <h4 className="text-sm font-semibold text-gray-600">Description</h4>
-                <p className="text-sm leading-relaxed">{species.description}</p>
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Description</h4>
+                <p className="mt-1 leading-relaxed text-gray-700">{species.description}</p>
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex justify-end pt-4">
-            <DialogClose asChild>
-              <Button variant="secondary">Close</Button>
-            </DialogClose>
-          </div>
+        <div className="flex justify-end border-t pt-4">
+          <DialogClose asChild>
+            <Button variant="outline">Close</Button>
+          </DialogClose>
         </div>
       </DialogContent>
     </Dialog>

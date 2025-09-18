@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -24,10 +25,8 @@ import { z } from "zod";
 
 type Species = Database["public"]["Tables"]["species"]["Row"];
 
-// Define kingdom enum for use in Zod schema and displaying dropdown options in the form
 const kingdoms = z.enum(["Animalia", "Plantae", "Fungi", "Protista", "Archaea", "Bacteria"]);
 
-// Use Zod to define the shape + requirements of a Species entry; used in form validation
 const speciesSchema = z.object({
   scientific_name: z
     .string()
@@ -49,20 +48,25 @@ const speciesSchema = z.object({
     .string()
     .nullable()
     .transform((val) => (!val || val.trim() === "" ? null : val.trim())),
+  endangered: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof speciesSchema>;
 
 interface EditSpeciesDialogProps {
   species: Species;
-  children: React.ReactNode; // The trigger element (Edit menu item)
+  children: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
 }
 
-export default function EditSpeciesDialog({ species, children }: EditSpeciesDialogProps) {
+export default function EditSpeciesDialog({ species, children, onOpenChange, open }: EditSpeciesDialogProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
 
-  // Set default values from the existing species data
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = typeof open === "boolean";
+  const dialogOpen = isControlled ? open : internalOpen;
+
   const defaultValues: Partial<FormData> = {
     scientific_name: species.scientific_name,
     common_name: species.common_name,
@@ -70,6 +74,7 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
     total_population: species.total_population,
     image: species.image,
     description: species.description,
+    endangered: species.endangered ?? false,
   };
 
   const form = useForm<FormData>({
@@ -77,6 +82,11 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
     defaultValues,
     mode: "onChange",
   });
+
+  const setOpen = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
 
   const onSubmit = async (input: FormData) => {
     const supabase = createBrowserSupabaseClient();
@@ -89,6 +99,7 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
         scientific_name: input.scientific_name,
         total_population: input.total_population,
         image: input.image,
+        endangered: input.endangered,
       })
       .eq("id", species.id);
 
@@ -100,11 +111,8 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
       });
     }
 
-    // Reset form and close dialog
     form.reset(input);
     setOpen(false);
-
-    // Refresh to show updated data
     router.refresh();
 
     return toast({
@@ -119,8 +127,8 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={dialogOpen} onOpenChange={(v) => setOpen(v)}>
+      {!isControlled && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="max-h-screen overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Edit Species</DialogTitle>
@@ -202,7 +210,7 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
                           {...rest}
                           onChange={(event) => {
                             const val = event.target.value;
-                            field.onChange(val === " ? null : +val");
+                            field.onChange(val === "" ? null : +val);
                           }}
                         />
                       </FormControl>
@@ -250,6 +258,24 @@ export default function EditSpeciesDialog({ species, children }: EditSpeciesDial
                     </FormItem>
                   );
                 }}
+              />
+              <FormField
+                control={form.control}
+                name="endangered"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Endangered Species</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Check this box if the species is classified as endangered.
+                      </p>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               <div className="flex">
                 <Button type="submit" className="ml-1 mr-1 flex-auto">
